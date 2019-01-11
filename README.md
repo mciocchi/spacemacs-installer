@@ -18,5 +18,3 @@ If you are deploying for the first time, run:
 ```bash
 sh deploy.sh
 ```
-These scripts can also be executed from a running emacs instance as [CyanIDE](https://github.com/mciocchi/cyanide "CyanIDE")
-tasks. Please refer to that project for documentation on CyanIDE tasks.

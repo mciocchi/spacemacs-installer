@@ -32,32 +32,32 @@ values."
    dotspacemacs-configuration-layers
    '(
      markdown
+     html
      javascript
-     python
      ;; ----------------------------------------------------------------
      ;; Example of useful layers you may want to use right away.
      ;; Uncomment some layer names and press <SPC f e R> (Vim style) or
      ;; <M-m f e R> (Emacs style) to install them.
      ;; ----------------------------------------------------------------
      helm
-     auto-completion
+     ;; auto-completion
      ;; better-defaults
      emacs-lisp
+     ;; git
      ;; markdown
      ;; org
      ;; (shell :variables
      ;;        shell-default-height 30
      ;;        shell-default-position 'bottom)
      ;; spell-checking
-     syntax-checking
-     version-control
-     git
+     ;; syntax-checking
+     ;; version-control
      )
    ;; List of additional packages that will be installed without being
    ;; wrapped in a layer. If you need some configuration for these
    ;; packages, then consider creating a layer. You can also put the
    ;; configuration in `dotspacemacs/user-config'.
-   dotspacemacs-additional-packages '(treemacs)
+   dotspacemacs-additional-packages '()
    ;; A list of packages that cannot be updated.
    dotspacemacs-frozen-packages '()
    ;; A list of packages that will not be installed and loaded.
@@ -303,6 +303,34 @@ executes.
  This function is mostly useful for variables that need to be set
 before packages are loaded. If you are unsure, you should try in setting them in
 `dotspacemacs/user-config' first."
+
+  ;; TODO: write an initialize-project function
+
+  (setq project-directories '("~/projects/"))
+
+  (add-hook 'projectile-mode-hook
+            (lambda ()
+              (setq projectile-switch-project-action (lambda () (dired ".")))
+
+              (dolist (project-directory project-directories)
+                (dolist (df (directory-files project-directory))
+                  (let ((dir (concat project-directory df)))
+                    (when (projectile-project-p dir)
+                      (add-to-list 'projectile-known-projects dir)))))
+
+              (define-key projectile-mode-map (kbd "C-c c l") 'projectile-switch-project)
+              (define-key projectile-mode-map (kbd "C-c c a") 'helm-projectile-ag)
+              (define-key projectile-mode-map (kbd "C-c c f") 'projectile-find-file)
+              (define-key projectile-mode-map (kbd "C-c c d") 'projectile-find-dir)))
+
+  (defun projectile-switch-project-by-name-advice (orig-fun &rest args)
+    (let ((res (apply orig-fun args)))
+      (setq projectile-project-name
+            (file-name-nondirectory (directory-file-name (car args))))
+      (setq frame-title-format projectile-project-name)
+      res))
+
+  (advice-add 'projectile-switch-project-by-name :around #'projectile-switch-project-by-name-advice)
   )
 
 (defun dotspacemacs/user-config ()
@@ -312,42 +340,6 @@ layers configuration.
 This is the place where most of your configurations should be done. Unless it is
 explicitly specified that a variable should be set before a package is loaded,
 you should place your code here."
-
-  (let ((default-directory (concat user-emacs-directory "lisp")))
-    (normal-top-level-add-subdirs-to-load-path))
-
-  (setq cyanide-project-toplevel-directories
-        `("~/projects/"
-          "~/.emacs.d/lisp/"))
-
-  (mapcar 'require
-          '(eieio
-            eieio-base
-            cyanide-org-integration
-            cyanide
-            cyanide-treemacs-view
-            cyanide-shell-view
-            conf))
-
-  ;; make cyanide scope and classes available everywhere
-  (setq-default cyanide-mode t)
-
-  ;; If you prefer ivy instead of helm, uncomment these lines. You may also
-  ;; set alternate search functions here.
-  ;; (setq cyanide-keyword-search-function 'counsel-projectile-ag)
-  ;; (setq cyanide-find-file-function 'counsel-projectile-find-file)
-  ;; (setq cyanide-occur-function 'swiper)
-
-  ;; Optional but useful: start with a single project defined, for working
-  ;; inside of dot-emacs directory
-  (cyanide-project :id 'dot-emacs
-                   :display-name "dot-emacs"
-                   :default-view 'cyanide-minimal-view
-                   :load-hook '((lambda ()
-                                  (dired (cyanide-project-oref :path))))
-                   :tasks '()
-                   :teardown-hook '()
-                   :path "~/.emacs.d/")
   )
 
 ;; Do not write anything past this comment. This is where Emacs will
@@ -359,7 +351,7 @@ you should place your code here."
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (mmm-mode markdown-toc markdown-mode gh-md yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode helm-pydoc cython-mode company-anaconda anaconda-mode pythonic smeargle orgit magit-gitflow helm-gitignore gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter-fringe+ git-gutter-fringe fringe-helper git-gutter+ git-gutter flycheck-pos-tip pos-tip flycheck evil-magit diff-hl helm-company helm-c-yasnippet fuzzy company-tern dash-functional company-statistics company auto-yasnippet ac-ispell auto-complete web-beautify tern livid-mode skewer-mode simple-httpd json-mode json-snatcher json-reformat js2-refactor yasnippet multiple-cursors js2-mode js-doc coffee-mode treemacs ht pfuture magit magit-popup git-commit ghub with-editor ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg undo-tree eval-sexp-fu highlight elisp-slime-nav dumb-jump f dash s diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line helm avy helm-core popup async))))
+    (mmm-mode markdown-toc markdown-mode gh-md web-mode tagedit slim-mode scss-mode sass-mode pug-mode helm-css-scss haml-mode emmet-mode web-beautify tern livid-mode skewer-mode simple-httpd json-mode json-snatcher json-reformat js2-refactor yasnippet multiple-cursors js2-mode js-doc coffee-mode ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist highlight evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg undo-tree eval-sexp-fu elisp-slime-nav dumb-jump f dash s diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line helm avy helm-core popup async))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
