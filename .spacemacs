@@ -31,6 +31,7 @@ values."
    ;; List of configuration layers to load.
    dotspacemacs-configuration-layers
    '(
+     python
      markdown
      html
      javascript
@@ -43,14 +44,14 @@ values."
      ;; auto-completion
      ;; better-defaults
      emacs-lisp
-     ;; git
-     ;; markdown
+     git
+     markdown
      ;; org
      ;; (shell :variables
      ;;        shell-default-height 30
      ;;        shell-default-position 'bottom)
      ;; spell-checking
-     ;; syntax-checking
+     syntax-checking
      ;; version-control
      )
    ;; List of additional packages that will be installed without being
@@ -303,8 +304,152 @@ executes.
  This function is mostly useful for variables that need to be set
 before packages are loaded. If you are unsure, you should try in setting them in
 `dotspacemacs/user-config' first."
+  )
 
-  ;; TODO: write an initialize-project function
+(defun dotspacemacs/user-config ()
+  "Configuration function for user code.
+This function is called at the very end of Spacemacs initialization after
+layers configuration.
+This is the place where most of your configurations should be done. Unless it is
+explicitly specified that a variable should be set before a package is loaded,
+you should place your code here."
+  (defun initialize-project ()
+"
+Interactive function to auto-initialize and load projects from either git remote
+or local dir.
+"
+    (interactive)
+    (let* ((initialize-project-from-remote-flow
+            (lambda ()
+              (let* ((git-url
+                      (helm-read-string "git url? "))
+                     (project-short-name
+                      (car
+                       (split-string
+                        (car (last (split-string git-url "/" ))) "\\.git")))
+                     (destination
+                      (file-name-as-directory
+                       (helm-read-file-name
+                        "clone into destination: "
+                        :initial-input
+                        (concat
+                         (file-name-as-directory (car project-directories))
+                         project-short-name))))
+                     (destination-exists-check
+                      (when (file-exists-p destination)
+                        (error
+                         (concat
+                          "destination already exists! "
+                          destination))))
+                     (git-clone-output
+                      (shell-command
+                       (concat
+                        "git clone "
+                        git-url
+                        " "
+                        destination)))
+                     (cd-retval (cd destination))
+                     (vc-name (read-string "git username? "))
+                     (vc-email (read-string "git email? "))
+                     (git-config-name-output
+                      (shell-command
+                       (concat
+                        "git config user.name '"
+                        vc-name
+                        "'")))
+                     (git-config-email-output
+                      (shell-command
+                       (concat
+                        "git config user.email '"
+                        vc-email "'")))
+                     (f-touch-retval
+                      (when (not (file-exists-p ".projectile"))
+                        (f-touch ".projectile")))
+                     (projectile-add-retval
+                      (projectile-add-known-project destination))
+                     (switched-dir
+                      (projectile-switch-project-by-name destination)))
+                nil)))
+
+           ;; TODO maybe break git setup into separate flow to be used elsewhere
+           (initialize-project-from-local-directory-new-flow
+            (lambda ()
+              (block cancelled
+                (let* ((print-retval (message (concat dirpath " does not exist")))
+                       (use-git
+                        (byte-to-string
+                         (read-char-choice
+                          (concat "Would you like to initialize this project with (g)it? "
+                                  "(n)o version control, or (c)ancel?: ")
+                          '(103 110 99))))
+                       (a (when (equal use-git "c")
+                            (return-from cancelled t)))
+                       (b (progn
+                            (mkdir dirpath t)
+                            (cd dirpath)
+                            (f-touch (concat dirpath ".projectile"))
+                            (projectile-add-known-project dirpath)))
+                       (c (when (equal use-git "g")
+                            (let* ((git-init-output (shell-command "git init"))
+                                   (vc-name (read-string "git username? "))
+                                   (vc-email (read-string "git email? "))
+                                   (git-config-name-output
+                                    (shell-command
+                                     (concat
+                                      "git config user.name '"
+                                      vc-name
+                                      "'")))
+                                   (git-config-email-output
+                                    (shell-command
+                                     (concat
+                                      "git config user.email '"
+                                      vc-email "'"))))
+                              nil)))
+                       (d (projectile-switch-project-by-name dirpath)))
+                  nil))))
+
+           ;; TODO set up org and .dir-locals?
+           (initialize-project-from-local-directory-existing-flow
+            (lambda ()
+              (let* ((print-retval (message (concat dirpath " exists")))
+                     (cd-retval (cd dirpath))
+                     (f-touch-retval
+                      (when (not (file-exists-p ".projectile"))
+                        (f-touch ".projectile")))
+                     (projectile-add-retval (projectile-add-known-project dirpath))
+                     (switched-dir
+                      (projectile-switch-project-by-name dirpath)))
+                nil)))
+
+           (initialize-project-from-local-directory-flow
+            (lambda ()
+              (let* ((dirpath
+                      (file-name-as-directory
+                       (helm-read-file-name
+                        "where should the project be created? "
+                        :initial-input
+                        (file-name-as-directory (car project-directories)))))
+                     (dir-exists (f-directory-p dirpath)))
+                (if dir-exists
+                    (funcall initialize-project-from-local-directory-existing-flow)
+                  (funcall initialize-project-from-local-directory-new-flow)))))
+
+           (project-origin
+            (byte-to-string
+             (read-char-choice
+              (concat "Would you like to initialize your project from (d)isk, "
+                      "clone from (v)ersion control, or (c)ancel?: ")
+              '(100 118 99))))
+
+           (flow-retval
+            (if (equal "d" project-origin)
+                (funcall initialize-project-from-local-directory-flow)
+              (if (equal "v" project-origin)
+                  (funcall initialize-project-from-remote-flow)
+                "cancelled" ; else no-op
+                ))))
+      nil)
+    nil)
 
   (setq project-directories '("~/projects/"))
 
@@ -316,12 +461,15 @@ before packages are loaded. If you are unsure, you should try in setting them in
                 (dolist (df (directory-files project-directory))
                   (let ((dir (concat project-directory df)))
                     (when (projectile-project-p dir)
-                      (add-to-list 'projectile-known-projects dir)))))
+                      (projectile-add-known-project (file-name-as-directory dir))))))
 
               (define-key projectile-mode-map (kbd "C-c c l") 'projectile-switch-project)
               (define-key projectile-mode-map (kbd "C-c c a") 'helm-projectile-ag)
               (define-key projectile-mode-map (kbd "C-c c f") 'projectile-find-file)
-              (define-key projectile-mode-map (kbd "C-c c d") 'projectile-find-dir)))
+              (define-key projectile-mode-map (kbd "C-c c d") 'projectile-find-dir)
+              (define-key comint-mode-map (kbd "C-c C-l")
+                (lambda () (interactive
+                            (progn (comint-clear-buffer) (end-of-buffer)))))))
 
   (defun projectile-switch-project-by-name-advice (orig-fun &rest args)
     (let ((res (apply orig-fun args)))
@@ -333,15 +481,6 @@ before packages are loaded. If you are unsure, you should try in setting them in
   (advice-add 'projectile-switch-project-by-name :around #'projectile-switch-project-by-name-advice)
   )
 
-(defun dotspacemacs/user-config ()
-  "Configuration function for user code.
-This function is called at the very end of Spacemacs initialization after
-layers configuration.
-This is the place where most of your configurations should be done. Unless it is
-explicitly specified that a variable should be set before a package is loaded,
-you should place your code here."
-  )
-
 ;; Do not write anything past this comment. This is where Emacs will
 ;; auto-generate custom variable definitions.
 (custom-set-variables
@@ -351,7 +490,23 @@ you should place your code here."
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (mmm-mode markdown-toc markdown-mode gh-md web-mode tagedit slim-mode scss-mode sass-mode pug-mode helm-css-scss haml-mode emmet-mode web-beautify tern livid-mode skewer-mode simple-httpd json-mode json-snatcher json-reformat js2-refactor yasnippet multiple-cursors js2-mode js-doc coffee-mode ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist highlight evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg undo-tree eval-sexp-fu elisp-slime-nav dumb-jump f dash s diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line helm avy helm-core popup async))))
+    (smeargle orgit org-projectile org-category-capture org-present org-pomodoro alert log4e gntp org-mime org-download magit-gitflow htmlize helm-gitignore gnuplot gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link flycheck-pos-tip pos-tip flycheck evil-magit magit magit-popup git-commit with-editor yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode dash-functional helm-pydoc cython-mode anaconda-mode pythonic mmm-mode markdown-toc markdown-mode gh-md web-mode tagedit slim-mode scss-mode sass-mode pug-mode helm-css-scss haml-mode emmet-mode web-beautify tern livid-mode skewer-mode simple-httpd json-mode json-snatcher json-reformat js2-refactor yasnippet multiple-cursors js2-mode js-doc coffee-mode ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist highlight evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg undo-tree eval-sexp-fu elisp-slime-nav dumb-jump f dash s diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line helm avy helm-core popup async)))
+ '(safe-local-variable-values
+   (quote
+    ((eval progn
+           (setq python-shell-process-environment
+                 (list "DJANGO_SETTINGS_MODULE={{cookiecutter.repo_name}}.{{cookiecutter.repo_name}}.settings.local")
+                 python-shell-extra-pythonpaths
+                 (list
+                  (expand-file-name
+                   (locate-dominating-file default-directory dir-locals-file)))
+                 python-shell-interpreter-args
+                 (concat "-i "
+                         (expand-file-name
+                          (locate-dominating-file default-directory dir-locals-file))
+                         "manage.py shell_plus --plain")))
+     (pyvenv-workon . "{{cookiecutter.repo_name}}")
+     (python-shell-interpreter . "python")))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
