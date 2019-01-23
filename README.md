@@ -8,8 +8,10 @@ emacs 25 or higher
 
 Before making changes, redeploy.sh will back up any pre-existing spacemacs
 config to the spacemacs-installer/backups directory, but you may wish to make
-your own manual backups first. Afterwards, from the spacemacs-installer
-directory, run:
+your own manual backups.
+
+Note that you should not need to redeploy to update or roll back packages. This
+can be done from the *spacemacs* buffer.
 
 ```bash
 sh redeploy.sh

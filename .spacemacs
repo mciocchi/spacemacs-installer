@@ -461,23 +461,23 @@ or local dir.
       nil)
     nil)
 
-  (add-hook 'projectile-mode-hook
-            (lambda ()
-              (setq projectile-switch-project-action (lambda () (dired ".")))
+  (setq projectile-switch-project-action (lambda () (dired ".")))
 
-              (dolist (project-directory cyanide-project-directories)
-                (dolist (df (directory-files project-directory))
-                  (let ((dir (concat project-directory df)))
-                    (when (projectile-project-p dir)
-                      (projectile-add-known-project (file-name-as-directory dir))))))
+  (dolist (project-directory
+           (mapcar (lambda (dir)
+                     (file-name-as-directory dir)) cyanide-project-directories))
+    (dolist (df (directory-files project-directory))
+      (let ((dir (concat project-directory df)))
+        (when (projectile-project-p dir)
+          (projectile-add-known-project (file-name-as-directory dir))))))
 
-              (define-key projectile-mode-map (kbd "C-c c l") 'projectile-switch-project)
-              (define-key projectile-mode-map (kbd "C-c c a") 'helm-projectile-ag)
-              (define-key projectile-mode-map (kbd "C-c c f") 'projectile-find-file)
-              (define-key projectile-mode-map (kbd "C-c c d") 'projectile-find-dir)
-              (define-key comint-mode-map (kbd "C-c C-l")
-                (lambda () (interactive
-                            (progn (comint-clear-buffer) (end-of-buffer)))))))
+  (define-key projectile-mode-map (kbd "C-c c l") 'projectile-switch-project)
+  (define-key projectile-mode-map (kbd "C-c c a") 'helm-projectile-ag)
+  (define-key projectile-mode-map (kbd "C-c c f") 'projectile-find-file)
+  (define-key projectile-mode-map (kbd "C-c c d") 'projectile-find-dir)
+  (define-key comint-mode-map (kbd "C-c C-l")
+    (lambda () (interactive
+                (progn (comint-clear-buffer) (end-of-buffer)))))
 
   (defun projectile-switch-project-by-name-advice (orig-fun &rest args)
     (let ((res (apply orig-fun args)))
