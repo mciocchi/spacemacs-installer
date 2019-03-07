@@ -2,7 +2,11 @@
 
 ## dependencies
 
-emacs 25 or higher
+* emacs 25 or higher
+
+* [Source Code Pro](https://github.com/adobe-fonts/source-code-pro "Source Code Pro Font")
+
+* [ternjs](http://ternjs.net "ternjs")
 
 ## usage
 
