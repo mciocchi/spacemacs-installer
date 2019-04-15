@@ -467,10 +467,11 @@ or local dir.
   (dolist (project-directory
            (mapcar (lambda (dir)
                      (file-name-as-directory dir)) cyanide-project-directories))
-    (dolist (df (directory-files project-directory))
-      (let ((dir (concat project-directory df)))
-        (when (projectile-project-p dir)
-          (projectile-add-known-project (file-name-as-directory dir))))))
+    (when (file-exists-p project-directory)
+      (dolist (df (directory-files project-directory))
+        (let ((dir (concat project-directory df)))
+          (when (projectile-project-p dir)
+            (projectile-add-known-project (file-name-as-directory dir)))))))
 
   (define-key projectile-mode-map (kbd "C-c c l") 'projectile-switch-project)
   (define-key projectile-mode-map (kbd "C-c c a") 'helm-projectile-ag)
@@ -528,6 +529,31 @@ or local dir.
    'org-mode-hook
    (lambda ()
      (visual-line-mode t)))
+
+  (add-hook
+   'python-mode-hook
+   (lambda ()
+     (toggle-truncate-lines t)))
+
+  (add-hook
+   'sh-mode-hook
+   (lambda ()
+     (toggle-truncate-lines t)))
+
+  (defun kill-buffers ()
+    "Close all buffers except for those used by core spacemacs."
+    (interactive)
+    (cl-reduce
+     (lambda (buf memo)
+       (when (not (member
+                   (buffer-name buf)
+                   '("*spacemacs*"
+                     "*Messages*"
+                     "*scratch*")))
+         (kill-buffer buf))
+       memo)
+     (buffer-list)
+     :initial-value '()))
   )
 
 ;; Do not write anything past this comment. This is where Emacs will
