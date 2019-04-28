@@ -508,7 +508,7 @@ or local dir.
     (interactive)
     (find-file org-root))
 
-  (setq vim-cheat-sheet (concat org-main-dir "vim-cheat-sheet.org"))
+  (setq vim-cheat-sheet (concat org-main-dir "vim.org"))
 
   (defun vim-cheat-sheet ()
     (interactive)
@@ -535,7 +535,8 @@ or local dir.
       (global-set-key (kbd "C-SPC") nil)
       (global-set-key (kbd "C-M-SPC") nil)
       (global-set-key (kbd "C-x C-c") nil)
-      (global-set-key (kbd "C-g") nil)))
+      (global-set-key (kbd "C-g") nil)
+      (global-set-key (kbd "C-l") nil)))
 
   (remove-emacs-bindings)
 
@@ -549,6 +550,11 @@ or local dir.
 
   (add-hook
    'org-mode-hook
+   (lambda ()
+     (visual-line-mode t)))
+
+  (add-hook
+   'markdown-mode-hook
    (lambda ()
      (visual-line-mode t)))
 
