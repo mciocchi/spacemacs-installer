@@ -518,6 +518,8 @@ or local dir.
 
   (global-set-key (kbd "C-h V") 'vim-cheat-sheet)
 
+  (global-set-key (kbd "C-i") 'evil-jump-forward)
+
   (defun remove-emacs-bindings ()
     (progn
       (global-set-key (kbd "C-x o") nil)
@@ -536,7 +538,11 @@ or local dir.
       (global-set-key (kbd "C-M-SPC") nil)
       (global-set-key (kbd "C-x C-c") nil)
       (global-set-key (kbd "C-g") nil)
-      (global-set-key (kbd "C-l") nil)))
+      (global-set-key (kbd "C-l") nil)
+      (global-set-key (kbd "<up>") nil)
+      (global-set-key (kbd "<down>") nil)
+      (global-set-key (kbd "<left>") nil)
+      (global-set-key (kbd "<right>") nil)))
 
   (remove-emacs-bindings)
 
